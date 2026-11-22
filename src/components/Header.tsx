@@ -13,6 +13,7 @@ const links = [
   { href: "/#modelo-3d", label: "3D" },
   { href: "/#galeria", label: "Galeria" },
   { href: "/loja", label: "Loja" },
+  { href: "/aluno", label: "Área do aluno" },
   { href: "/#contato", label: "Contato" },
 ];
 

@@ -116,7 +116,28 @@ export default async function PedidoPage({ params, searchParams }: PageProps<"/l
 
         {(hasCourse || hasDigital) && (
           <section className="rounded-2xl bg-aqua/10 p-6 text-sm text-navy/85">
-            {hasCourse && <p>📚 Assim que o pagamento for confirmado, o curso é liberado na <strong>Área do Aluno</strong> para o e-mail deste pedido.</p>}
+            {hasCourse && o.status === "pendente" && (
+              <p>📚 Assim que o pagamento for confirmado, o curso é liberado na <strong>Área do Aluno</strong> para o e-mail deste pedido.</p>
+            )}
+            {hasCourse && (o.status === "pago" || o.status === "entregue" || o.status === "enviado") && (
+              <div>
+                <p className="font-semibold">📚 Seu curso está liberado!</p>
+                <p className="mt-1">
+                  Entre na Área do Aluno com o e-mail deste pedido. Se preferir usar outra conta, clique em “Ativar na minha conta”.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link href="/aluno" className="rounded-full bg-navy px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-ivory">
+                    Ir para a Área do Aluno
+                  </Link>
+                  <Link
+                    href={`/aluno/ativar?pedido=${o.id}&t=${token}`}
+                    className="rounded-full border border-navy/30 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-navy"
+                  >
+                    Ativar na minha conta
+                  </Link>
+                </div>
+              </div>
+            )}
             {hasDigital && <p className="mt-2">💾 Os arquivos digitais ficam disponíveis para download após a confirmação do pagamento.</p>}
           </section>
         )}

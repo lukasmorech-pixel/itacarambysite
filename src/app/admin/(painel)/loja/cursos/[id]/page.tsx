@@ -3,10 +3,22 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { deleteLesson, deleteModule, moveLesson, moveModule, saveLesson, saveModule } from "../../../../curso-actions";
 import { ConfirmButton, IconButton, SubmitButton, inputCls, labelCls } from "@/components/admin/ui";
+import { FileField } from "@/components/admin/FileField";
 
 export const instant = false;
 
-type Lesson = { id: string; position: number; title: string; topics: string[]; exercise: string[]; duration_min: number | null; is_preview: boolean };
+type LessonContent = { video_url: string; body: string; materials: { name: string; path: string }[]; updated_at: string };
+type Lesson = {
+  id: string;
+  position: number;
+  title: string;
+  topics: string[];
+  exercise: string[];
+  duration_min: number | null;
+  is_preview: boolean;
+  content: LessonContent | LessonContent[] | null;
+};
+const contentOf = (l?: Lesson): LessonContent | null => (Array.isArray(l?.content) ? l.content[0] ?? null : l?.content ?? null);
 type Module = { id: string; position: number; title: string; level: string; lessons: Lesson[] };
 
 const LEVELS = ["Iniciante", "Intermediário", "Avançado", "Profissional"];
@@ -67,6 +79,41 @@ function LessonForm({ courseId, modules, moduleId, l }: { courseId: string; modu
         Exercício prático (uma etapa por linha)
         <textarea name="exercise" rows={3} defaultValue={l?.exercise.join("\n")} className={inputCls} />
       </label>
+      <fieldset className="grid gap-3 rounded-xl bg-aqua/5 p-4 ring-1 ring-aqua/20 sm:col-span-3">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-navy/70">Conteúdo para os alunos (Área do Aluno)</legend>
+        <label className={labelCls}>
+          Vídeo da aula — link do Bunny Stream, YouTube ou Vimeo
+          <input name="video_url" defaultValue={contentOf(l)?.video_url} placeholder="https://iframe.mediadelivery.net/embed/…" className={inputCls} />
+        </label>
+        <label className={labelCls}>
+          Texto da aula (parágrafos separados por linha em branco)
+          <textarea name="body" rows={5} defaultValue={contentOf(l)?.body} className={inputCls} />
+        </label>
+        {(contentOf(l)?.materials ?? []).length > 0 && (
+          <div className="grid gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wider text-navy/70">Materiais (desmarque para remover)</span>
+            {contentOf(l)!.materials.map((m) => (
+              <label key={m.path} className="flex items-center gap-2">
+                <input type="checkbox" name="keep_material" value={m.path} defaultChecked className="h-4 w-4 accent-copper" />
+                📎 {m.name}
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FileField
+            name="new_material_path"
+            nameField="new_material_original"
+            folder={`cursos/${courseId}`}
+            label="Adicionar material (PDF, ficha, etc.)"
+            note="Pasta privada: só alunos com acesso ao curso conseguem baixar."
+          />
+          <label className={labelCls}>
+            Nome do material (opcional)
+            <input name="new_material_name" placeholder="Ex.: Ficha de cores" className={inputCls} />
+          </label>
+        </div>
+      </fieldset>
       <label className={labelCls}>
         Módulo
         <select name="module_id" defaultValue={moduleId} className={inputCls}>
@@ -92,7 +139,7 @@ export default async function CursoConteudoPage({ params }: PageProps<"/admin/lo
   const { supabase } = await requireAdmin();
   const { data: course } = await supabase
     .from("ita_courses")
-    .select("id,title,slug,published,modules:ita_course_modules(id,position,title,level,lessons:ita_course_lessons(id,position,title,topics,exercise,duration_min,is_preview))")
+    .select("id,title,slug,published,modules:ita_course_modules(id,position,title,level,lessons:ita_course_lessons(id,position,title,topics,exercise,duration_min,is_preview,content:ita_lesson_content(video_url,body,materials,updated_at)))")
     .eq("id", id)
     .maybeSingle();
   if (!course) notFound();
@@ -153,11 +200,12 @@ export default async function CursoConteudoPage({ params }: PageProps<"/admin/lo
                         {l.title}
                         {l.is_preview && <span className="ml-2 rounded-full bg-aqua/15 px-2 py-0.5 text-[10px] uppercase">grátis</span>}
                       </span>
+                      {contentOf(l)?.video_url ? <span title="Tem vídeo" className="text-xs">🎬</span> : <span title="Sem vídeo ainda" className="text-xs text-ink/30">🎬</span>}
                       {l.duration_min ? <span className="text-xs text-ink/50">{l.duration_min} min</span> : null}
                       <span className="text-xs text-aqua group-open/l:hidden">Editar</span>
                     </summary>
                     <div className="grid gap-3 border-t border-navy/10 p-4">
-                      <LessonForm courseId={course.id} modules={modules} moduleId={m.id} l={l} />
+                      <LessonForm key={contentOf(l)?.updated_at ?? l.id} courseId={course.id} modules={modules} moduleId={m.id} l={l} />
                       <div className="flex items-center gap-2 border-t border-navy/10 pt-3">
                         <MoveButtons action={moveLesson} courseId={course.id} id={l.id} first={li === 0} last={li === m.lessons.length - 1} />
                         <form action={deleteLesson} className="ml-auto">
@@ -173,7 +221,7 @@ export default async function CursoConteudoPage({ params }: PageProps<"/admin/lo
                 <details className="rounded-xl border-2 border-dashed border-copper/40">
                   <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-copper">+ Nova aula neste módulo</summary>
                   <div className="border-t border-navy/10 p-4">
-                    <LessonForm courseId={course.id} modules={modules} moduleId={m.id} />
+                    <LessonForm key={`nova-${m.lessons.length}`} courseId={course.id} modules={modules} moduleId={m.id} />
                   </div>
                 </details>
               </div>

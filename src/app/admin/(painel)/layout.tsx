@@ -15,6 +15,7 @@ const nav = [
   { href: "/admin/loja/pedidos", label: "Loja · Pedidos" },
   { href: "/admin/loja/produtos", label: "Loja · Modelos" },
   { href: "/admin/loja/cursos", label: "Loja · Cursos" },
+  { href: "/admin/alunos", label: "Alunos" },
 ];
 
 export default async function PainelLayout({ children }: LayoutProps<"/admin">) {

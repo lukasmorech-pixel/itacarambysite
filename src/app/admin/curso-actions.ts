@@ -3,6 +3,7 @@
 import { refresh, updateTag } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { CONTENT_TAG } from "@/lib/content";
+import { embedUrl } from "@/lib/video";
 
 type Db = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 
@@ -111,6 +112,12 @@ export async function saveLesson(f: FormData) {
   // posição provisória no fim do módulo de destino (a numeração final vem do renumber)
   const endOf = Math.max(0, ...les.filter((l) => l.module_id === moduleId).map((l) => l.position)) + 100;
 
+  // conteúdo protegido (só alunos com acesso veem)
+  const video = str(f, "video_url", 600);
+  if (video && !embedUrl(video)) throw new Error("Link de vídeo não reconhecido. Use o link do Bunny Stream, YouTube ou Vimeo.");
+  const prefix = `cursos/${courseId}/`;
+
+  let lessonId = id;
   if (id) {
     const cur = les.find((l) => l.id === id);
     if (!cur) throw new Error("Aula não encontrada.");
@@ -118,9 +125,29 @@ export async function saveLesson(f: FormData) {
     const { error } = await supabase.from("ita_course_lessons").update(patch).eq("id", id);
     if (error) throw new Error(error.message);
   } else {
-    const { error } = await supabase.from("ita_course_lessons").insert({ ...row, module_id: moduleId, position: endOf });
+    const { data, error } = await supabase.from("ita_course_lessons").insert({ ...row, module_id: moduleId, position: endOf }).select("id").single();
     if (error) throw new Error(error.message);
+    lessonId = data.id;
   }
+
+  const { data: old } = await supabase.from("ita_lesson_content").select("materials").eq("lesson_id", lessonId).maybeSingle();
+  const keep = new Set(f.getAll("keep_material").map(String));
+  const materials = ((old?.materials ?? []) as { name: string; path: string }[]).filter((m) => keep.has(m.path));
+  const newPath = str(f, "new_material_path", 400);
+  if (newPath) {
+    if (!newPath.startsWith(prefix)) throw new Error("Arquivo de material inválido.");
+    const label = str(f, "new_material_name", 120) || str(f, "new_material_original", 160) || newPath.split("/").pop()!;
+    materials.push({ name: label, path: newPath });
+  }
+  const { error: cErr } = await supabase.from("ita_lesson_content").upsert({
+    lesson_id: lessonId,
+    video_url: video,
+    body: str(f, "body", 20000),
+    materials,
+    updated_at: new Date().toISOString(),
+  });
+  if (cErr) throw new Error(cErr.message);
+
   await renumber(supabase, courseId);
   done();
 }
