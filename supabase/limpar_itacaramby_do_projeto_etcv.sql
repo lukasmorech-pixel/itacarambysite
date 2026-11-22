@@ -4,9 +4,9 @@
 
 begin;
 
--- arquivos e pastas de fotos do Itacaramby
-delete from storage.objects where bucket_id in ('itacaramby', 'itacaramby-arquivos');
-delete from storage.buckets where id in ('itacaramby', 'itacaramby-arquivos');
+-- regras das pastas do Itacaramby
+-- (as pastas "itacaramby" e "itacaramby-arquivos" estão vazias; apague-as pela tela Storage do Supabase,
+--  porque o Supabase não permite apagar storage por SQL)
 drop policy if exists "itacaramby: admin envia fotos" on storage.objects;
 drop policy if exists "itacaramby: admin atualiza fotos" on storage.objects;
 drop policy if exists "itacaramby: admin apaga fotos" on storage.objects;
