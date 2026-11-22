@@ -23,6 +23,8 @@ export type Product = {
   description: string;
   price_cents: number;
   image_url: string;
+  /** modelo 3D (.glb) opcional, mostrado no botão "Ver em 3D" */
+  model_url?: string;
 };
 export type Course = {
   id: string;

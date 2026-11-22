@@ -84,6 +84,7 @@ function rowFromForm(t: Table, f: FormData) {
         price_cents: cents(f, "price") ?? 0,
         image_url: str(f, "image_url", 600),
         file_path: kind === "digital" ? str(f, "file_path", 400) : "",
+        model_url: /^(\/3d\/[\w.-]+\.glb|https:\/\/\S+\.glb)$/.test(str(f, "model_url", 400)) ? str(f, "model_url", 400) : "",
         published,
       };
     }

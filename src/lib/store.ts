@@ -15,7 +15,7 @@ export async function getStore(): Promise<{ products: Product[]; courses: Course
   }
   const db = createPublicClient();
   const [p, c] = await Promise.all([
-    db.from("ita_products").select("id,kind,name,description,price_cents,image_url").eq("published", true).order("position"),
+    db.from("ita_products").select("id,kind,name,description,price_cents,image_url,model_url").eq("published", true).order("position"),
     db
       .from("ita_courses")
       .select("id,slug,title,subtitle,description,image_url,highlights,price_monthly_cents,price_full_cents,access_days")

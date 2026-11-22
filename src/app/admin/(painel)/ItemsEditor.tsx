@@ -14,6 +14,15 @@ const titleOf = (kind: Kind, r: Row) => {
   return String(r.title);
 };
 
+/** modelos 3D disponíveis em /public/3d */
+const MODELS_3D: [string, string][] = [
+  ["/3d/estudo-parcial.glb", "Par parcialmente desdentado"],
+  ["/3d/estudo-total.glb", "Par desdentado total"],
+  ["/3d/estudo-implante.glb", "Par com 4 análogos de implante"],
+  ["/3d/protocolo.glb", "Protocolo superior sobre implantes"],
+  ["/3d/implante-coroa.glb", "Implante com coroa"],
+];
+
 /** centavos -> "180,00" para o campo de preço */
 const money = (c: unknown) => (c == null || c === "" ? "" : (Number(c) / 100).toFixed(2).replace(".", ","));
 
@@ -38,6 +47,15 @@ function Fields({ kind, r }: { kind: Kind; r?: Row }) {
           </label>
           <ImageField name="image_url" defaultValue={v("image_url")} folder="loja" />
           <FileField name="file_path" defaultValue={v("file_path")} label="Arquivo (só para produto digital)" />
+          <label className={`${labelCls} sm:col-span-2`}>
+            Modelo 3D (opcional) — mostra o botão “Ver em 3D” na loja
+            <select name="model_url" defaultValue={v("model_url")} className={inputCls}>
+              <option value="">Sem modelo 3D</option>
+              {MODELS_3D.map(([file, label]) => (
+                <option key={file} value={file}>{label}</option>
+              ))}
+            </select>
+          </label>
         </>
       );
     case "courses":

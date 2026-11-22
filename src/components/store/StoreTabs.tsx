@@ -7,6 +7,7 @@ import { brl, type Course, type Product } from "@/content/site";
 import { useCart } from "@/components/store/CartProvider";
 import { CoursePlans } from "@/components/store/CoursePlans";
 import { LogoMark } from "@/components/Logo";
+import { Viewer3D } from "@/components/Viewer3D";
 
 type Tab = "modelos" | "cursos";
 
@@ -19,8 +20,42 @@ function Added({ show }: { show: boolean }) {
   );
 }
 
+/** Janela com o visualizador 3D do produto (girar, aproximar, AR no celular). */
+function Modal3D({ p, onClose }: { p: Product; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`${p.name} em 3D`} className="fixed inset-0 z-[60] grid place-items-center bg-navy/85 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-start justify-between gap-4 text-ivory">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-copper">Visualização 3D</p>
+            <h3 className="font-serif text-xl">{p.name}</h3>
+          </div>
+          <button onClick={onClose} className="rounded-full border border-ivory/30 px-4 py-1.5 text-xs uppercase tracking-wider hover:bg-white/10">
+            Fechar ✕
+          </button>
+        </div>
+        <div className="mx-auto max-h-[75vh] max-w-[75vh]">
+          <Viewer3D src={p.model_url!} alt={`Modelo 3D: ${p.name}`} orbit="0deg 50deg 105%" />
+        </div>
+        <p className="mt-3 text-center text-xs text-ivory/60">Arraste para girar · use dois dedos ou a roda do mouse para aproximar · modelo ilustrativo</p>
+      </div>
+    </div>
+  );
+}
+
 function ProductCard({ p }: { p: Product }) {
   const { add, items } = useCart();
+  const [show3d, setShow3d] = useState(false);
   const inCart = items.some((i) => i.key === `produto:${p.id}`);
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl bg-ivory shadow-sm ring-1 ring-navy/5">
@@ -37,6 +72,15 @@ function ProductCard({ p }: { p: Product }) {
         >
           {p.kind === "digital" ? "Arquivo digital" : "Modelo físico"}
         </span>
+        {p.model_url ? (
+          <button
+            onClick={() => setShow3d(true)}
+            className="absolute bottom-4 right-4 rounded-full bg-ivory/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-navy shadow-lg hover:bg-white"
+          >
+            ⟳ Ver em 3D
+          </button>
+        ) : null}
+        {show3d && <Modal3D p={p} onClose={() => setShow3d(false)} />}
       </div>
       <div className="flex flex-1 flex-col p-6">
         <h3 className="font-serif text-lg text-navy">{p.name}</h3>
