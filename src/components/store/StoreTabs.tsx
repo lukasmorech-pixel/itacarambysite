@@ -3,13 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { brl, type Course, type Product } from "@/content/site";
+import { brl, whatsappLink, type Course, type Product, type Service } from "@/content/site";
 import { useCart } from "@/components/store/CartProvider";
 import { CoursePlans } from "@/components/store/CoursePlans";
 import { LogoMark } from "@/components/Logo";
 import { Viewer3D } from "@/components/Viewer3D";
 
-type Tab = "modelos" | "cursos";
+type Tab = "modelos" | "servicos" | "cursos";
+const TABS: Tab[] = ["modelos", "servicos", "cursos"];
 
 function Added({ show }: { show: boolean }) {
   if (!show) return null;
@@ -137,35 +138,66 @@ function CourseCard({ c }: { c: Course }) {
   );
 }
 
-export function StoreTabs({ products, courses }: { products: Product[]; courses: Course[] }) {
+function ServiceCard({ s, whatsapp }: { s: Service; whatsapp: string }) {
+  return (
+    <article className="flex flex-col overflow-hidden rounded-2xl bg-ivory shadow-sm ring-1 ring-navy/5">
+      {s.image_url ? (
+        <div className="relative aspect-[16/10] bg-navy">
+          <Image src={s.image_url} alt={s.title} fill sizes="(min-width:1024px) 360px, 90vw" className="object-cover" />
+        </div>
+      ) : null}
+      <div className="flex flex-1 flex-col p-6">
+        <h3 className="font-serif text-lg text-navy">{s.title}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-ink/65">{s.text}</p>
+        <ul className="mt-4 flex flex-1 flex-wrap content-start gap-2">
+          {s.items.map((i) => (
+            <li key={i} className="rounded-full bg-navy/5 px-3 py-1 text-xs text-navy/80">{i}</li>
+          ))}
+        </ul>
+        <a
+          href={whatsappLink(whatsapp, `Olá! Gostaria de um orçamento de ${s.title} com o laboratório Itacaramby.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 rounded-full bg-copper py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-navy hover:brightness-105"
+        >
+          Pedir orçamento pelo WhatsApp
+        </a>
+      </div>
+    </article>
+  );
+}
+
+export function StoreTabs({ products, courses, services, whatsapp }: { products: Product[]; courses: Course[]; services: Service[]; whatsapp: string }) {
   const [tab, setTab] = useState<Tab>("modelos");
 
   useEffect(() => {
     // permite links diretos para /loja#cursos
+    const h = window.location.hash.slice(1) as Tab;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (window.location.hash === "#cursos") setTab("cursos");
+    if (TABS.includes(h)) setTab(h);
   }, []);
 
   const select = (t: Tab) => {
     setTab(t);
-    history.replaceState(null, "", t === "cursos" ? "#cursos" : "#modelos");
+    history.replaceState(null, "", `#${t}`);
   };
 
   const tabs: { id: Tab; label: string; n: number }[] = [
     { id: "modelos", label: "Modelos de estudo", n: products.length },
-    { id: "cursos", label: "Cursos", n: courses.length },
+    { id: "servicos", label: "Serviços do laboratório", n: services.length },
+    { id: "cursos", label: "Cursos online", n: courses.length },
   ];
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-12">
-      <div role="tablist" aria-label="Seções da loja" className="flex gap-2 border-b border-navy/10">
+      <div role="tablist" aria-label="Seções da loja" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-navy/10 [scrollbar-width:none]">
         {tabs.map((t) => (
           <button
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => select(t.id)}
-            className={`-mb-px border-b-2 px-5 py-3 text-sm font-semibold transition ${
+            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-3 text-sm sm:px-5 font-semibold transition ${
               tab === t.id ? "border-copper text-navy" : "border-transparent text-ink/50 hover:text-navy"
             }`}
           >
@@ -185,6 +217,18 @@ export function StoreTabs({ products, courses }: { products: Product[]; courses:
           ) : (
             <p className="text-ink/60">Em breve novos modelos de estudo.</p>
           ))}
+        {tab === "servicos" && (
+          <>
+            <p className="mb-8 max-w-2xl text-sm text-ink/60">
+              Trabalhos feitos sob medida para o seu consultório. Escolha o serviço e fale direto com o laboratório para combinar prazo e valor.
+            </p>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {services.map((s) => (
+                <ServiceCard key={s.id} s={s} whatsapp={whatsapp} />
+              ))}
+            </div>
+          </>
+        )}
         {tab === "cursos" &&
           (courses.length ? (
             <div className="grid gap-8">
