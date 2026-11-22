@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { brl, type Course, type Product } from "@/content/site";
 import { useCart } from "@/components/store/CartProvider";
+import { CoursePlans } from "@/components/store/CoursePlans";
 import { LogoMark } from "@/components/Logo";
 
 type Tab = "modelos" | "cursos";
@@ -61,22 +62,17 @@ function ProductCard({ p }: { p: Product }) {
 }
 
 function CourseCard({ c }: { c: Course }) {
-  const { add, items } = useCart();
-  const inCart = items.find((i) => i.type === "curso" && i.id === c.id);
-  const plan = (p: "mensal" | "completo", price: number) =>
-    add({ type: "curso", id: c.id, plan: p, name: `${c.title} — ${p === "mensal" ? "assinatura mensal" : "curso completo"}`, price_cents: price, image_url: c.image_url });
-
   return (
     <article className="grid overflow-hidden rounded-3xl bg-ivory shadow-sm ring-1 ring-navy/5 lg:grid-cols-[1fr_1.1fr]">
-      <div className="relative min-h-64 bg-navy">
-        {c.image_url && <Image src={c.image_url} alt={c.title} fill sizes="(min-width:1024px) 520px, 90vw" className="object-cover opacity-90" />}
+      <Link href={`/loja/cursos/${c.slug}`} className="group relative block min-h-64 bg-navy">
+        {c.image_url && <Image src={c.image_url} alt={c.title} fill sizes="(min-width:1024px) 520px, 90vw" className="object-cover opacity-90 transition group-hover:opacity-100" />}
         <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-7 text-ivory">
           <span className="rounded-full bg-copper px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-navy">Curso online</span>
           <h3 className="mt-3 font-serif text-3xl">{c.title}</h3>
           <p className="mt-1 text-sm text-ivory/75">{c.subtitle}</p>
         </div>
-      </div>
+      </Link>
       <div className="p-7 sm:p-9">
         <p className="leading-relaxed text-ink/75">{c.description}</p>
         <ul className="mt-5 grid gap-2 text-sm text-ink/80 sm:grid-cols-2">
@@ -86,33 +82,11 @@ function CourseCard({ c }: { c: Course }) {
             </li>
           ))}
         </ul>
-        <div className="mt-7 grid gap-4 sm:grid-cols-2">
-          {c.price_monthly_cents != null && (
-            <div className={`rounded-2xl border p-5 ${inCart?.plan === "mensal" ? "border-copper bg-copper/5" : "border-navy/10"}`}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-aqua">Assinatura mensal</p>
-              <p className="mt-2 font-serif text-3xl text-navy">
-                {brl(c.price_monthly_cents)}
-                <span className="text-sm text-ink/50"> /mês</span>
-              </p>
-              <p className="mt-1 text-xs text-ink/55">Acesso liberado enquanto a assinatura estiver ativa.</p>
-              <button onClick={() => plan("mensal", c.price_monthly_cents!)} className="mt-4 w-full rounded-full bg-navy py-2.5 text-xs font-semibold uppercase tracking-wider text-ivory hover:bg-navy-2">
-                {inCart?.plan === "mensal" ? "No carrinho" : "Assinar"}
-              </button>
-            </div>
-          )}
-          {c.price_full_cents != null && (
-            <div className={`rounded-2xl border p-5 ${inCart?.plan === "completo" ? "border-copper bg-copper/5" : "border-navy/10"}`}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-aqua">Curso completo</p>
-              <p className="mt-2 font-serif text-3xl text-navy">{brl(c.price_full_cents)}</p>
-              <p className="mt-1 text-xs text-ink/55">Pagamento único · acesso por {Math.round(c.access_days / 30)} meses.</p>
-              <button onClick={() => plan("completo", c.price_full_cents!)} className="mt-4 w-full rounded-full bg-copper py-2.5 text-xs font-semibold uppercase tracking-wider text-navy hover:brightness-105">
-                {inCart?.plan === "completo" ? "No carrinho" : "Comprar"}
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="mt-3 h-4">
-          <Added show={!!inCart} />
+        <Link href={`/loja/cursos/${c.slug}`} className="mt-5 inline-block text-sm font-semibold text-aqua underline">
+          Ver conteúdo do curso, aula por aula →
+        </Link>
+        <div className="mt-6">
+          <CoursePlans c={c} />
         </div>
       </div>
     </article>

@@ -1,0 +1,153 @@
+"use server";
+
+import { refresh, updateTag } from "next/cache";
+import { requireAdmin } from "@/lib/admin";
+import { CONTENT_TAG } from "@/lib/content";
+
+type Db = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
+
+const str = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? "").trim().slice(0, max);
+const lines = (f: FormData, k: string) =>
+  str(f, k, 8000)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+type Mod = { id: string; position: number };
+type Les = { id: string; module_id: string; position: number };
+
+async function load(db: Db, courseId: string) {
+  const { data: mods, error } = await db.from("ita_course_modules").select("id,position").eq("course_id", courseId).order("position");
+  if (error) throw new Error(error.message);
+  const ids = (mods ?? []).map((m) => m.id);
+  const { data: les, error: e2 } = ids.length
+    ? await db.from("ita_course_lessons").select("id,module_id,position").in("module_id", ids).order("position")
+    : { data: [] as Les[], error: null };
+  if (e2) throw new Error(e2.message);
+  return { mods: (mods ?? []) as Mod[], les: (les ?? []) as Les[] };
+}
+
+/** Grava a ordem: módulos 1..N e aulas numeradas em sequência no curso inteiro. */
+async function applyOrder(db: Db, courseId: string, mods: Mod[], les: Les[]) {
+  const lessonIds = mods.flatMap((m) => les.filter((l) => l.module_id === m.id).map((l) => l.id));
+  const { error } = await db.rpc("ita_course_apply_order", { p_course: courseId, p_modules: mods.map((m) => m.id), p_lessons: lessonIds });
+  if (error) throw new Error(error.message);
+}
+
+async function renumber(db: Db, courseId: string) {
+  const { mods, les } = await load(db, courseId);
+  await applyOrder(db, courseId, mods, les);
+}
+
+function done() {
+  updateTag(CONTENT_TAG);
+  refresh();
+}
+
+const swap = <T,>(arr: T[], i: number, j: number) => {
+  if (i < 0 || j < 0 || i >= arr.length || j >= arr.length) return false;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  return true;
+};
+
+// ---------- MÓDULOS ----------
+export async function saveModule(f: FormData) {
+  const { supabase } = await requireAdmin();
+  const courseId = str(f, "course_id", 64);
+  const id = str(f, "id", 64);
+  const row = { title: str(f, "title", 160), level: str(f, "level", 40) };
+  if (!row.title) throw new Error("Informe o nome do módulo.");
+
+  if (id) {
+    const { error } = await supabase.from("ita_course_modules").update(row).eq("id", id).eq("course_id", courseId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { mods } = await load(supabase, courseId);
+    const next = Math.max(0, ...mods.map((m) => m.position)) + 1;
+    const { error } = await supabase.from("ita_course_modules").insert({ ...row, course_id: courseId, position: next });
+    if (error) throw new Error(error.message);
+    await renumber(supabase, courseId);
+  }
+  done();
+}
+
+export async function deleteModule(f: FormData) {
+  const { supabase } = await requireAdmin();
+  const courseId = str(f, "course_id", 64);
+  const { error } = await supabase.from("ita_course_modules").delete().eq("id", str(f, "id", 64)).eq("course_id", courseId);
+  if (error) throw new Error(error.message);
+  await renumber(supabase, courseId);
+  done();
+}
+
+export async function moveModule(f: FormData) {
+  const { supabase } = await requireAdmin();
+  const courseId = str(f, "course_id", 64);
+  const { mods, les } = await load(supabase, courseId);
+  const i = mods.findIndex((m) => m.id === str(f, "id", 64));
+  if (!swap(mods, i, i + (str(f, "dir", 4) === "up" ? -1 : 1))) return;
+  await applyOrder(supabase, courseId, mods, les);
+  done();
+}
+
+// ---------- AULAS ----------
+export async function saveLesson(f: FormData) {
+  const { supabase } = await requireAdmin();
+  const courseId = str(f, "course_id", 64);
+  const id = str(f, "id", 64);
+  const moduleId = str(f, "module_id", 64);
+  const dur = Number(str(f, "duration_min", 4));
+  const row = {
+    title: str(f, "title", 200),
+    topics: lines(f, "topics"),
+    exercise: lines(f, "exercise"),
+    duration_min: Number.isFinite(dur) && dur > 0 ? Math.min(600, Math.round(dur)) : null,
+    is_preview: f.get("is_preview") === "on",
+  };
+  if (!row.title) throw new Error("Informe o título da aula.");
+
+  const { mods, les } = await load(supabase, courseId);
+  if (!mods.some((m) => m.id === moduleId)) throw new Error("Módulo inválido.");
+  // posição provisória no fim do módulo de destino (a numeração final vem do renumber)
+  const endOf = Math.max(0, ...les.filter((l) => l.module_id === moduleId).map((l) => l.position)) + 100;
+
+  if (id) {
+    const cur = les.find((l) => l.id === id);
+    if (!cur) throw new Error("Aula não encontrada.");
+    const patch = cur.module_id === moduleId ? row : { ...row, module_id: moduleId, position: endOf };
+    const { error } = await supabase.from("ita_course_lessons").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("ita_course_lessons").insert({ ...row, module_id: moduleId, position: endOf });
+    if (error) throw new Error(error.message);
+  }
+  await renumber(supabase, courseId);
+  done();
+}
+
+export async function deleteLesson(f: FormData) {
+  const { supabase } = await requireAdmin();
+  const courseId = str(f, "course_id", 64);
+  const { les } = await load(supabase, courseId);
+  const id = str(f, "id", 64);
+  if (!les.some((l) => l.id === id)) throw new Error("Aula não encontrada.");
+  const { error } = await supabase.from("ita_course_lessons").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  await renumber(supabase, courseId);
+  done();
+}
+
+export async function moveLesson(f: FormData) {
+  const { supabase } = await requireAdmin();
+  const courseId = str(f, "course_id", 64);
+  const { mods, les } = await load(supabase, courseId);
+  const id = str(f, "id", 64);
+  const cur = les.find((l) => l.id === id);
+  if (!cur) return;
+  const inMod = les.filter((l) => l.module_id === cur.module_id);
+  const i = inMod.findIndex((l) => l.id === id);
+  if (!swap(inMod, i, i + (str(f, "dir", 4) === "up" ? -1 : 1))) return;
+  const others = les.filter((l) => l.module_id !== cur.module_id);
+  await applyOrder(supabase, courseId, mods, [...others, ...inMod]);
+  done();
+}

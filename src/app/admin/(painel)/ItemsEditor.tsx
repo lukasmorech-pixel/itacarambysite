@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { deleteItem, moveItem, saveItem } from "../actions";
 import { ImageField } from "@/components/admin/ImageField";
 import { FileField } from "@/components/admin/FileField";
@@ -134,6 +135,16 @@ export function ItemsEditor({ kind, rows, addLabel }: { kind: Kind; rows: Row[];
             <span className="text-xs text-aqua group-open:hidden">Editar</span>
           </summary>
           <div className="grid gap-4 border-t border-navy/10 p-4">
+            {kind === "courses" && (
+              <div className="flex flex-wrap gap-3 rounded-xl bg-aqua/10 p-3 text-sm">
+                <Link href={`/admin/loja/cursos/${r.id}`} className="font-semibold text-navy underline">
+                  Editar módulos e aulas →
+                </Link>
+                {r.published ? (
+                  <Link href={`/loja/cursos/${r.slug}`} target="_blank" className="text-aqua underline">Ver página do curso ↗</Link>
+                ) : null}
+              </div>
+            )}
             <ItemForm kind={kind} r={r} />
             <div className="flex items-center gap-2 border-t border-navy/10 pt-3">
               <form action={moveItem}>
