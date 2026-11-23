@@ -172,10 +172,11 @@ export default async function CursoConteudoPage({ params }: PageProps<"/admin/lo
         {totalMin ? ` · ${Math.floor(totalMin / 60)}h${String(totalMin % 60).padStart(2, "0")}` : ""}. As aulas são numeradas automaticamente.
       </p>
       <p className="mb-6 text-sm">
+        <Link href={`/admin/loja/cursos/${course.id}/previa`} className="mr-4 font-semibold text-navy underline">Pré-visualizar página</Link>
         {course.published ? (
-          <Link href={`/loja/cursos/${course.slug}`} target="_blank" className="font-semibold text-aqua underline">Ver página do curso ↗</Link>
+          <Link href={`/loja/cursos/${course.slug}`} target="_blank" className="font-semibold text-aqua underline">Ver na loja ↗</Link>
         ) : (
-          <span className="text-ink/50">O curso está oculto: marque “Mostrar no site” em Cursos para a página aparecer.</span>
+          <span className="text-ink/50">O curso está oculto: marque “Mostrar no site” em Cursos para a página aparecer na loja.</span>
         )}
       </p>
 

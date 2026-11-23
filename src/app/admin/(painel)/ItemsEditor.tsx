@@ -161,8 +161,9 @@ export function ItemsEditor({ kind, rows, addLabel }: { kind: Kind; rows: Row[];
                 <Link href={`/admin/loja/cursos/${r.id}`} className="font-semibold text-navy underline">
                   Editar módulos e aulas →
                 </Link>
+                <Link href={`/admin/loja/cursos/${r.id}/previa`} className="text-navy underline">Pré-visualizar</Link>
                 {r.published ? (
-                  <Link href={`/loja/cursos/${r.slug}`} target="_blank" className="text-aqua underline">Ver página do curso ↗</Link>
+                  <Link href={`/loja/cursos/${r.slug}`} target="_blank" className="text-aqua underline">Ver na loja ↗</Link>
                 ) : null}
               </div>
             )}
