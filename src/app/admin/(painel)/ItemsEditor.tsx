@@ -20,6 +20,7 @@ const MODELS_3D: [string, string][] = [
   ["/3d/estudo-total.glb", "Par desdentado total"],
   ["/3d/estudo-implante.glb", "Par com 4 análogos de implante"],
   ["/3d/protocolo.glb", "Protocolo superior sobre implantes"],
+  ["/3d/protocolo-inferior.glb", "Protocolo inferior sobre 6 implantes"],
   ["/3d/implante-coroa.glb", "Implante com coroa"],
 ];
 

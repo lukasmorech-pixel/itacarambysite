@@ -24,6 +24,16 @@ const MODELS = [
     alt: "Modelo 3D de protocolo superior sobre quatro implantes",
     orbit: "0deg 82deg 100%",
   },
+  {
+    id: "protocolo-inferior",
+    tab: "Protocolo inferior",
+    title: "Protocolo inferior sobre 6 implantes.",
+    text: "A prótese aparece separada da base para você ver como ela se encaixa: 12 dentes sobre gengiva em resina, parafusados nos pilares de titânio instalados no rebordo.",
+    points: ["12 dentes sobre gengiva em resina", "6 implantes com pilares multi-unit, vista explodida"],
+    src: "/3d/protocolo-inferior.glb",
+    alt: "Modelo 3D de protocolo inferior sobre seis implantes, com a prótese separada da base",
+    orbit: "15deg 65deg 105%",
+  },
 ];
 
 export function Gallery3D() {
