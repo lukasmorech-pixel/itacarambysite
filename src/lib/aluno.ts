@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createSessionClient } from "@/lib/supabase/server";
 import type { Phase } from "@/content/site";
 
@@ -16,6 +17,7 @@ export type StudentModule = { id: string; position: number; title: string; level
 
 /** Aluno logado (qualquer conta). Use em toda página e ação da Área do Aluno. */
 export async function requireStudent(next = "/aluno") {
+  await connection(); // sempre por requisição (sessão do aluno)
   const supabase = await createSessionClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;

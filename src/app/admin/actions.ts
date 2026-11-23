@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { refresh, updateTag } from "next/cache";
-import { requireAdmin } from "@/lib/admin";
+import { fail, requireAdmin } from "@/lib/admin";
 import { CONTENT_TAG } from "@/lib/content";
 import { createSessionClient } from "@/lib/supabase/server";
 import type { Settings } from "@/content/site";
@@ -109,18 +109,18 @@ export async function saveItem(formData: FormData) {
   const t = table(formData);
   const id = str(formData, "id", 64);
   const row = rowFromForm(t, formData);
-  if (t === "gallery" && !("image_url" in row && row.image_url)) throw new Error("Escolha uma foto para a galeria.");
-  if (t === "courses" && "price_monthly_cents" in row && row.price_monthly_cents == null && row.price_full_cents == null) {
-    throw new Error("Informe pelo menos um preço (mensal ou completo).");
+  if (t === "gallery" && !("image_url" in row && row.image_url)) return fail("Escolha uma foto para a galeria.");
+  if (t === "courses" && "price_monthly_cents" in row && row.published && row.price_monthly_cents == null && row.price_full_cents == null) {
+    return fail("Para mostrar o curso no site, informe pelo menos um preço (mensal ou completo). Para guardar como rascunho, desmarque “Mostrar no site”.");
   }
 
   if (id) {
     const { error } = await supabase.from(`ita_${t}`).update(row).eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) return fail(error.message);
   } else {
     const { data: last } = await supabase.from(`ita_${t}`).select("position").order("position", { ascending: false }).limit(1).maybeSingle();
     const { error } = await supabase.from(`ita_${t}`).insert({ ...row, position: (last?.position ?? 0) + 1 });
-    if (error) throw new Error(error.message);
+    if (error) return fail(error.message);
   }
   done();
 }
@@ -130,7 +130,7 @@ export async function deleteItem(formData: FormData) {
   const t = table(formData);
   const id = str(formData, "id", 64);
   const { error } = await supabase.from(`ita_${t}`).delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   done();
 }
 
@@ -141,7 +141,7 @@ export async function moveItem(formData: FormData) {
   const dir = str(formData, "dir", 4) === "up" ? -1 : 1;
 
   const { data: rows, error } = await supabase.from(`ita_${t}`).select("id,position").order("position", { ascending: true });
-  if (error || !rows) throw new Error(error?.message ?? "Erro ao ordenar");
+  if (error || !rows) return fail(error?.message ?? "Erro ao ordenar");
   const i = rows.findIndex((r) => r.id === id);
   const j = i + dir;
   if (i < 0 || j < 0 || j >= rows.length) return;
@@ -158,7 +158,7 @@ export async function setMessageRead(formData: FormData) {
   const id = str(formData, "id", 64);
   const read = str(formData, "read", 5) === "true";
   const { error } = await supabase.from("ita_messages").update({ read }).eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   refresh();
 }
 
@@ -169,19 +169,19 @@ export async function updateOrder(formData: FormData) {
   const { supabase } = await requireAdmin();
   const id = str(formData, "id", 64);
   const status = str(formData, "status", 20);
-  if (!ORDER_STATUS.includes(status)) throw new Error("Status inválido");
+  if (!ORDER_STATUS.includes(status)) return fail("Status inválido");
   const { data: current } = await supabase.from("ita_orders").select("status,paid_at").eq("id", id).maybeSingle();
   const patch: Record<string, unknown> = { status, admin_notes: str(formData, "admin_notes", 1000) };
   if (status === "pago" && !current?.paid_at) patch.paid_at = new Date().toISOString();
   const { error } = await supabase.from("ita_orders").update(patch).eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   refresh();
 }
 
 export async function deleteMessage(formData: FormData) {
   const { supabase } = await requireAdmin();
   const { error } = await supabase.from("ita_messages").delete().eq("id", str(formData, "id", 64));
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   refresh();
 }
 

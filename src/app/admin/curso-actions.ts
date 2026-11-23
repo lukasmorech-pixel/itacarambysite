@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh, updateTag } from "next/cache";
-import { requireAdmin } from "@/lib/admin";
+import { fail, requireAdmin } from "@/lib/admin";
 import { CONTENT_TAG } from "@/lib/content";
 import { embedUrl } from "@/lib/video";
 
@@ -19,12 +19,12 @@ type Les = { id: string; module_id: string; position: number };
 
 async function load(db: Db, courseId: string) {
   const { data: mods, error } = await db.from("ita_course_modules").select("id,position").eq("course_id", courseId).order("position");
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   const ids = (mods ?? []).map((m) => m.id);
   const { data: les, error: e2 } = ids.length
     ? await db.from("ita_course_lessons").select("id,module_id,position").in("module_id", ids).order("position")
     : { data: [] as Les[], error: null };
-  if (e2) throw new Error(e2.message);
+  if (e2) return fail(e2.message);
   return { mods: (mods ?? []) as Mod[], les: (les ?? []) as Les[] };
 }
 
@@ -32,7 +32,7 @@ async function load(db: Db, courseId: string) {
 async function applyOrder(db: Db, courseId: string, mods: Mod[], les: Les[]) {
   const lessonIds = mods.flatMap((m) => les.filter((l) => l.module_id === m.id).map((l) => l.id));
   const { error } = await db.rpc("ita_course_apply_order", { p_course: courseId, p_modules: mods.map((m) => m.id), p_lessons: lessonIds });
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
 }
 
 async function renumber(db: Db, courseId: string) {
@@ -57,16 +57,16 @@ export async function saveModule(f: FormData) {
   const courseId = str(f, "course_id", 64);
   const id = str(f, "id", 64);
   const row = { title: str(f, "title", 160), level: str(f, "level", 40) };
-  if (!row.title) throw new Error("Informe o nome do módulo.");
+  if (!row.title) return fail("Informe o nome do módulo.");
 
   if (id) {
     const { error } = await supabase.from("ita_course_modules").update(row).eq("id", id).eq("course_id", courseId);
-    if (error) throw new Error(error.message);
+    if (error) return fail(error.message);
   } else {
     const { mods } = await load(supabase, courseId);
     const next = Math.max(0, ...mods.map((m) => m.position)) + 1;
     const { error } = await supabase.from("ita_course_modules").insert({ ...row, course_id: courseId, position: next });
-    if (error) throw new Error(error.message);
+    if (error) return fail(error.message);
     await renumber(supabase, courseId);
   }
   done();
@@ -76,7 +76,7 @@ export async function deleteModule(f: FormData) {
   const { supabase } = await requireAdmin();
   const courseId = str(f, "course_id", 64);
   const { error } = await supabase.from("ita_course_modules").delete().eq("id", str(f, "id", 64)).eq("course_id", courseId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   await renumber(supabase, courseId);
   done();
 }
@@ -105,28 +105,28 @@ export async function saveLesson(f: FormData) {
     duration_min: Number.isFinite(dur) && dur > 0 ? Math.min(600, Math.round(dur)) : null,
     is_preview: f.get("is_preview") === "on",
   };
-  if (!row.title) throw new Error("Informe o título da aula.");
+  if (!row.title) return fail("Informe o título da aula.");
 
   const { mods, les } = await load(supabase, courseId);
-  if (!mods.some((m) => m.id === moduleId)) throw new Error("Módulo inválido.");
+  if (!mods.some((m) => m.id === moduleId)) return fail("Módulo inválido.");
   // posição provisória no fim do módulo de destino (a numeração final vem do renumber)
   const endOf = Math.max(0, ...les.filter((l) => l.module_id === moduleId).map((l) => l.position)) + 100;
 
   // conteúdo protegido (só alunos com acesso veem)
   const video = str(f, "video_url", 600);
-  if (video && !embedUrl(video)) throw new Error("Link de vídeo não reconhecido. Use o link do Bunny Stream, YouTube ou Vimeo.");
+  if (video && !embedUrl(video)) return fail("Link de vídeo não reconhecido. Use o link do Bunny Stream, YouTube ou Vimeo.");
   const prefix = `cursos/${courseId}/`;
 
   let lessonId = id;
   if (id) {
     const cur = les.find((l) => l.id === id);
-    if (!cur) throw new Error("Aula não encontrada.");
+    if (!cur) return fail("Aula não encontrada.");
     const patch = cur.module_id === moduleId ? row : { ...row, module_id: moduleId, position: endOf };
     const { error } = await supabase.from("ita_course_lessons").update(patch).eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) return fail(error.message);
   } else {
     const { data, error } = await supabase.from("ita_course_lessons").insert({ ...row, module_id: moduleId, position: endOf }).select("id").single();
-    if (error) throw new Error(error.message);
+    if (error) return fail(error.message);
     lessonId = data.id;
   }
 
@@ -135,7 +135,7 @@ export async function saveLesson(f: FormData) {
   const materials = ((old?.materials ?? []) as { name: string; path: string }[]).filter((m) => keep.has(m.path));
   const newPath = str(f, "new_material_path", 400);
   if (newPath) {
-    if (!newPath.startsWith(prefix)) throw new Error("Arquivo de material inválido.");
+    if (!newPath.startsWith(prefix)) return fail("Arquivo de material inválido.");
     const label = str(f, "new_material_name", 120) || str(f, "new_material_original", 160) || newPath.split("/").pop()!;
     materials.push({ name: label, path: newPath });
   }
@@ -146,7 +146,7 @@ export async function saveLesson(f: FormData) {
     materials,
     updated_at: new Date().toISOString(),
   });
-  if (cErr) throw new Error(cErr.message);
+  if (cErr) return fail(cErr.message);
 
   await renumber(supabase, courseId);
   done();
@@ -157,9 +157,9 @@ export async function deleteLesson(f: FormData) {
   const courseId = str(f, "course_id", 64);
   const { les } = await load(supabase, courseId);
   const id = str(f, "id", 64);
-  if (!les.some((l) => l.id === id)) throw new Error("Aula não encontrada.");
+  if (!les.some((l) => l.id === id)) return fail("Aula não encontrada.");
   const { error } = await supabase.from("ita_course_lessons").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   await renumber(supabase, courseId);
   done();
 }
@@ -193,10 +193,10 @@ export async function savePhases(f: FormData) {
     .map((title, i) => ({ title, text: texts[i] ?? "", model: models[i] ?? "", module: mods[i] ?? 1 }))
     .filter((p) => p.title || p.model);
   for (const p of phases) {
-    if (!p.title) throw new Error("Toda fase precisa de um título.");
-    if (!MODEL_RE.test(p.model)) throw new Error(`Modelo 3D inválido na fase “${p.title}”. Use um arquivo de /3d/…glb.`);
+    if (!p.title) return fail("Toda fase precisa de um título.");
+    if (!MODEL_RE.test(p.model)) return fail(`Modelo 3D inválido na fase “${p.title}”. Use um arquivo de /3d/…glb.`);
   }
   const { error } = await supabase.from("ita_courses").update({ phases }).eq("id", courseId);
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
   done();
 }

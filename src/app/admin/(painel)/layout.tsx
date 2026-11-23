@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { AdminNotice } from "@/components/admin/AdminNotice";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { logout } from "../actions";
@@ -52,7 +54,12 @@ export default async function PainelLayout({ children }: LayoutProps<"/admin">) 
           </div>
         </div>
       </aside>
-      <main className="mx-auto w-full max-w-5xl p-5 sm:p-8">{children}</main>
+      <main className="mx-auto w-full max-w-5xl p-5 sm:p-8">
+        <Suspense fallback={null}>
+          <AdminNotice />
+        </Suspense>
+        {children}
+      </main>
     </div>
   );
 }
