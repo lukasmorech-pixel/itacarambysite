@@ -34,6 +34,16 @@ const MODELS = [
     alt: "Modelo 3D de protocolo inferior sobre seis implantes, com a prótese separada da base",
     orbit: "15deg 65deg 105%",
   },
+  {
+    id: "ppr",
+    tab: "Prótese parcial removível",
+    title: "PPR inferior com estrutura metálica.",
+    text: "Os dentes que faltam ficam em selas de resina, unidas por uma barra lingual metálica. Os grampos abraçam os pré-molares naturais e seguram a prótese no lugar, sem precisar de implantes.",
+    points: ["Selas com dentes posteriores dos dois lados", "Barra lingual, grampos e apoios em metal"],
+    src: "/3d/ppr-inferior.glb",
+    alt: "Modelo 3D de prótese parcial removível inferior separada da arcada com dentes naturais",
+    orbit: "10deg 62deg 105%",
+  },
 ];
 
 export function Gallery3D() {
