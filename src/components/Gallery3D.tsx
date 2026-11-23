@@ -44,6 +44,22 @@ const MODELS = [
     alt: "Modelo 3D de prótese parcial removível inferior separada da arcada com dentes naturais",
     orbit: "10deg 62deg 105%",
   },
+  {
+    id: "plano-cera",
+    tab: "Plano de cera",
+    title: "Plano de cera e linhas de referência.",
+    text: "Os planos de cera superior e inferior em oclusão sobre os modelos de gesso: é neles que o dentista marca as referências que guiam a montagem dos dentes da prótese total.",
+    points: ["Linha média, linhas dos caninos e linha alta do sorriso", "Plano oclusal: o encontro dos dois planos de cera"],
+    src: "/3d/plano-cera.glb",
+    alt: "Modelo 3D de planos de cera em oclusão sobre modelos de gesso, com linhas de referência",
+    orbit: "0deg 80deg 88%",
+    hotspots: [
+      { id: "media", label: "Linha média", position: "0 0.0175 0.0179" },
+      { id: "caninos", label: "Linha dos caninos", position: "0.0171 0.0294 0.0109" },
+      { id: "sorriso", label: "Linha alta do sorriso", position: "-0.0095 0.0325 0.0158" },
+      { id: "oclusal", label: "Plano oclusal", position: "-0.0216 0.0238 0.0056" },
+    ],
+  },
 ];
 
 export function Gallery3D() {
@@ -81,7 +97,7 @@ export function Gallery3D() {
         </ul>
         <p className="mt-8 text-xs text-ivory/40">Modelos ilustrativos.</p>
       </div>
-      <Viewer3D key={m.id} src={m.src} alt={m.alt} orbit={m.orbit} />
+      <Viewer3D key={m.id} src={m.src} alt={m.alt} orbit={m.orbit} hotspots={"hotspots" in m ? m.hotspots : undefined} />
     </div>
   );
 }

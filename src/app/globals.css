@@ -40,3 +40,7 @@ section[id] {
   from { width: 0%; }
   to { width: 100%; }
 }
+
+/* etiquetas presas ao modelo 3D: somem quando o ponto fica de costas */
+.hotspot-label { transition: opacity 0.25s; opacity: 0; }
+.hotspot-label[data-visible] { opacity: 1; }

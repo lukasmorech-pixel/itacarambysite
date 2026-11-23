@@ -11,8 +11,10 @@ declare module "react" {
   }
 }
 
-/** Visualizador 3D: girar, aproximar e ver em realidade aumentada no celular. */
-export function Viewer3D({ src, alt, orbit = "35deg 72deg 130%" }: { src: string; alt: string; orbit?: string }) {
+export type Hotspot = { id: string; label: string; position: string; normal?: string };
+
+/** Visualizador 3D: girar, aproximar e ver em realidade aumentada no celular. Aceita etiquetas presas ao modelo. */
+export function Viewer3D({ src, alt, orbit = "35deg 72deg 130%", hotspots = [] }: { src: string; alt: string; orbit?: string; hotspots?: Hotspot[] }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -45,6 +47,19 @@ export function Viewer3D({ src, alt, orbit = "35deg 72deg 130%" }: { src: string
           ar-modes="webxr scene-viewer quick-look"
           style={{ width: "100%", height: "100%", background: "transparent", "--poster-color": "transparent" } as React.CSSProperties}
         >
+          {hotspots.map((h) => (
+            <button
+              key={h.id}
+              slot={`hotspot-${h.id}`}
+              data-position={h.position}
+              data-normal={h.normal ?? "0 0 1"}
+              data-visibility-attribute="visible"
+              className="hotspot-label pointer-events-none whitespace-nowrap rounded-full border border-ivory/30 bg-navy/85 px-2.5 py-1 text-[11px] font-semibold text-ivory shadow-lg backdrop-blur"
+            >
+              <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-copper align-middle" />
+              {h.label}
+            </button>
+          ))}
           <button
             slot="ar-button"
             className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-copper px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-navy shadow-lg"

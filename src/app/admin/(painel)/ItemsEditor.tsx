@@ -22,6 +22,7 @@ const MODELS_3D: [string, string][] = [
   ["/3d/protocolo.glb", "Protocolo superior sobre implantes"],
   ["/3d/protocolo-inferior.glb", "Protocolo inferior sobre 6 implantes"],
   ["/3d/ppr-inferior.glb", "Prótese parcial removível (PPR) inferior"],
+  ["/3d/plano-cera.glb", "Plano de cera — prótese total dupla"],
   ["/3d/implante-coroa.glb", "Implante com coroa"],
 ];
 
