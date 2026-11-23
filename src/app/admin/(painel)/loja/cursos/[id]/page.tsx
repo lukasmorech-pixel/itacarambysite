@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
-import { deleteLesson, deleteModule, moveLesson, moveModule, saveLesson, saveModule } from "../../../../curso-actions";
+import { deleteLesson, deleteModule, moveLesson, moveModule, saveLesson, saveModule, savePhases } from "../../../../curso-actions";
+import type { Phase } from "@/content/site";
 import { ConfirmButton, IconButton, SubmitButton, inputCls, labelCls } from "@/components/admin/ui";
 import { FileField } from "@/components/admin/FileField";
 
@@ -22,6 +23,13 @@ const contentOf = (l?: Lesson): LessonContent | null => (Array.isArray(l?.conten
 type Module = { id: string; position: number; title: string; level: string; lessons: Lesson[] };
 
 const LEVELS = ["Iniciante", "Intermediário", "Avançado", "Profissional"];
+const MODELS_3D = [
+  ...[1, 2, 3, 4, 5, 6, 7].map((n) => `/3d/fases/masterclass-${n}.glb`),
+  "/3d/protocolo.glb",
+  "/3d/protocolo-inferior.glb",
+  "/3d/ppr-inferior.glb",
+  "/3d/implante-coroa.glb",
+];
 
 function Hidden({ courseId, id }: { courseId: string; id?: string }) {
   return (
@@ -139,7 +147,7 @@ export default async function CursoConteudoPage({ params }: PageProps<"/admin/lo
   const { supabase } = await requireAdmin();
   const { data: course } = await supabase
     .from("ita_courses")
-    .select("id,title,slug,published,modules:ita_course_modules(id,position,title,level,lessons:ita_course_lessons(id,position,title,topics,exercise,duration_min,is_preview,content:ita_lesson_content(video_url,body,materials,updated_at)))")
+    .select("id,title,slug,published,phases,modules:ita_course_modules(id,position,title,level,lessons:ita_course_lessons(id,position,title,topics,exercise,duration_min,is_preview,content:ita_lesson_content(video_url,body,materials,updated_at)))")
     .eq("id", id)
     .maybeSingle();
   if (!course) notFound();
@@ -147,6 +155,7 @@ export default async function CursoConteudoPage({ params }: PageProps<"/admin/lo
   const modules = ([...((course.modules as Module[]) ?? [])] as Module[])
     .sort((a, b) => a.position - b.position)
     .map((m) => ({ ...m, lessons: [...(m.lessons ?? [])].sort((a, b) => a.position - b.position) }));
+  const phases: Phase[] = Array.isArray(course.phases) ? (course.phases as Phase[]) : [];
   const totalLessons = modules.reduce((n, m) => n + m.lessons.length, 0);
   const totalMin = modules.reduce((n, m) => n + m.lessons.reduce((k, l) => k + (l.duration_min ?? 0), 0), 0);
 
@@ -169,6 +178,30 @@ export default async function CursoConteudoPage({ params }: PageProps<"/admin/lo
           <span className="text-ink/50">O curso está oculto: marque “Mostrar no site” em Cursos para a página aparecer.</span>
         )}
       </p>
+
+      <details className="mb-6 rounded-2xl bg-navy text-ivory shadow-sm">
+        <summary className="cursor-pointer list-none p-4 font-semibold">
+          🎬 Fases em 3D (animação na página do curso e nas aulas) · {phases.length} fases
+        </summary>
+        <form action={savePhases} className="grid gap-3 border-t border-white/10 p-4">
+          <input type="hidden" name="course_id" value={course.id} />
+          <datalist id="modelos-3d">
+            {MODELS_3D.map((m) => <option key={m} value={m} />)}
+          </datalist>
+          <p className="text-xs text-ivory/60">
+            Cada fase mostra um modelo 3D e diz em qual módulo ela é ensinada. A animação passa pelas fases nesta ordem. Deixe a linha vazia para remover.
+          </p>
+          {[...phases, { title: "", text: "", model: "", module: (phases.at(-1)?.module ?? 0) + 1 }].map((p, i) => (
+            <div key={i} className="grid gap-2 rounded-xl bg-white/5 p-3 sm:grid-cols-[2fr_90px_2fr]">
+              <input name="phase_title" defaultValue={p.title} placeholder={`Fase ${i + 1} — título`} className={`${inputCls} text-ink`} />
+              <input name="phase_module" type="number" min={1} max={99} defaultValue={p.module} aria-label="Módulo" title="Módulo" className={`${inputCls} text-ink`} />
+              <input name="phase_model" list="modelos-3d" defaultValue={p.model} placeholder="/3d/fases/….glb" className={`${inputCls} text-ink`} />
+              <textarea name="phase_text" rows={2} defaultValue={p.text} placeholder="O que acontece nesta fase" className={`${inputCls} text-ink sm:col-span-3`} />
+            </div>
+          ))}
+          <div><SubmitButton>Salvar fases</SubmitButton></div>
+        </form>
+      </details>
 
       <div className="grid gap-4">
         {modules.map((m, mi) => (

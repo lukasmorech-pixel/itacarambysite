@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { createSessionClient } from "@/lib/supabase/server";
+import type { Phase } from "@/content/site";
 
 export type Enrollment = {
   id: string;
@@ -40,7 +41,7 @@ export async function loadCourseForStudent(
 ) {
   const { data: course } = await supabase
     .from("ita_courses")
-    .select("id,slug,title,subtitle,image_url,modules:ita_course_modules(id,position,title,level,lessons:ita_course_lessons(id,position,title,duration_min,is_preview))")
+    .select("id,slug,title,subtitle,image_url,phases,modules:ita_course_modules(id,position,title,level,lessons:ita_course_lessons(id,position,title,duration_min,is_preview))")
     .eq("slug", slug)
     .maybeSingle();
   if (!course) return null;
@@ -67,6 +68,7 @@ export async function loadCourseForStudent(
     modules,
     lessons,
     done,
+    phases: (Array.isArray(course.phases) ? course.phases : []) as Phase[],
     hasAccess: !!access,
     enrollment: enr as Pick<Enrollment, "plan" | "expires_at" | "status"> | null,
   };

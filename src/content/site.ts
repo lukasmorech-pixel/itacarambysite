@@ -26,6 +26,8 @@ export type Product = {
   /** modelo 3D (.glb) opcional, mostrado no botão "Ver em 3D" */
   model_url?: string;
 };
+/** Uma fase do curso mostrada em 3D (animação na página do curso e nas aulas). */
+export type Phase = { title: string; text: string; model: string; module: number };
 export type Course = {
   id: string;
   slug: string;

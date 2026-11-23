@@ -178,3 +178,25 @@ export async function moveLesson(f: FormData) {
   await applyOrder(supabase, courseId, mods, [...others, ...inMod]);
   done();
 }
+
+// ---------- FASES EM 3D ----------
+const MODEL_RE = /^\/3d\/[\w./-]+\.glb$/;
+
+export async function savePhases(f: FormData) {
+  const { supabase } = await requireAdmin();
+  const courseId = str(f, "course_id", 64);
+  const titles = f.getAll("phase_title").map((v) => String(v).trim().slice(0, 120));
+  const texts = f.getAll("phase_text").map((v) => String(v).trim().slice(0, 600));
+  const models = f.getAll("phase_model").map((v) => String(v).trim().slice(0, 200));
+  const mods = f.getAll("phase_module").map((v) => Math.max(1, Math.min(99, Number(v) || 1)));
+  const phases = titles
+    .map((title, i) => ({ title, text: texts[i] ?? "", model: models[i] ?? "", module: mods[i] ?? 1 }))
+    .filter((p) => p.title || p.model);
+  for (const p of phases) {
+    if (!p.title) throw new Error("Toda fase precisa de um título.");
+    if (!MODEL_RE.test(p.model)) throw new Error(`Modelo 3D inválido na fase “${p.title}”. Use um arquivo de /3d/…glb.`);
+  }
+  const { error } = await supabase.from("ita_courses").update({ phases }).eq("id", courseId);
+  if (error) throw new Error(error.message);
+  done();
+}

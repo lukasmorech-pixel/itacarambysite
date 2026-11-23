@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCourse, getStore } from "@/lib/store";
 import { CoursePlans } from "@/components/store/CoursePlans";
+import { PhaseViewer } from "@/components/PhaseViewer";
 
 const FALLBACK_SLUG = "masterclass-protocolo-natural";
 
@@ -39,6 +40,7 @@ export default async function CursoPage({ params }: PageProps<"/loja/cursos/[slu
   const lessons = c.modules.flatMap((m) => m.lessons);
   const total = lessons.reduce((n, l) => n + (l.duration_min ?? 0), 0);
   const levels = [...new Set(c.modules.map((m) => m.level).filter(Boolean))];
+  const phaseOf = (module: number) => c.phases.findIndex((p) => p.module === module);
 
   return (
     <>
@@ -83,6 +85,18 @@ export default async function CursoPage({ params }: PageProps<"/loja/cursos/[slu
         </div>
       </section>
 
+      {/* FASES EM 3D */}
+      {c.phases.length > 0 && (
+        <section className="bg-navy pb-16">
+          <div className="mx-auto max-w-5xl px-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-copper">O curso em 3D</p>
+            <h2 className="mb-6 max-w-2xl font-serif text-3xl text-ivory sm:text-4xl">Veja a peça evoluir, fase a fase.</h2>
+            <PhaseViewer phases={c.phases} moduleLinkPrefix="#modulo-" />
+            <p className="mt-3 text-center text-xs text-ivory/45">Modelo ilustrativo · arraste para girar · cada fase é ensinada num módulo do curso</p>
+          </div>
+        </section>
+      )}
+
       {/* EMENTA */}
       <section className="mx-auto max-w-4xl px-5 py-16">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-aqua">Conteúdo do curso</p>
@@ -101,7 +115,7 @@ export default async function CursoPage({ params }: PageProps<"/loja/cursos/[slu
           {c.modules.map((m) => {
             const mins = m.lessons.reduce((n, l) => n + (l.duration_min ?? 0), 0);
             return (
-              <details key={m.id} className="group rounded-2xl bg-white shadow-sm ring-1 ring-navy/5" open={m.position === 1}>
+              <details key={m.id} id={`modulo-${m.position}`} className="group scroll-mt-24 rounded-2xl bg-white shadow-sm ring-1 ring-navy/5" open={m.position === 1}>
                 <summary className="flex cursor-pointer list-none items-center gap-4 p-5">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-copper/60 font-serif text-copper">
                     {m.position}
@@ -114,6 +128,11 @@ export default async function CursoPage({ params }: PageProps<"/loja/cursos/[slu
                   </span>
                   <span className="text-xl text-ink/40 transition group-open:rotate-45">+</span>
                 </summary>
+                {phaseOf(m.position) >= 0 && (
+                  <a href={`#fase-${phaseOf(m.position) + 1}`} className="mx-5 mb-3 inline-flex items-center gap-2 rounded-full bg-copper/10 px-3 py-1 text-xs font-semibold text-copper hover:bg-copper/20">
+                    ▶ Ver a fase {phaseOf(m.position) + 1} em 3D: {c.phases[phaseOf(m.position)].title}
+                  </a>
+                )}
                 <ol className="divide-y divide-navy/5 border-t border-navy/10">
                   {m.lessons.map((l) => (
                     <li key={l.id} className="px-5 py-4">

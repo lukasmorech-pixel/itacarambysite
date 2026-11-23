@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadCourseForStudent, requireStudent } from "@/lib/aluno";
 import { embedUrl } from "@/lib/video";
+import { PhaseViewer } from "@/components/PhaseViewer";
 import { toggleLesson } from "../../../../../actions";
 
 export const instant = false;
@@ -15,13 +16,18 @@ export default async function AulaPage({ params }: PageProps<"/aluno/cursos/[slu
   const { supabase, user } = await requireStudent(here);
   const data = await loadCourseForStudent(supabase, slug, user);
   if (!data) notFound();
-  const { course, modules, lessons, done, hasAccess } = data;
+  const { course, modules, lessons, done, hasAccess, phases } = data;
 
   const idx = lessons.findIndex((l) => l.id === lessonId);
   if (idx < 0) notFound();
   const lesson = lessons[idx];
   const mod = modules.find((m) => m.lessons.some((l) => l.id === lessonId))!;
   const canView = hasAccess || lesson.is_preview;
+  // fase em 3D do módulo desta aula (ou a última fase já alcançada)
+  let phaseIdx = -1;
+  phases.forEach((p, i) => {
+    if (p.module <= mod.position) phaseIdx = i;
+  });
 
   // tópicos e exercício (ementa) + conteúdo protegido (só volta se o aluno tiver acesso)
   const [{ data: syllabus }, { data: content }] = await Promise.all([
@@ -136,6 +142,13 @@ export default async function AulaPage({ params }: PageProps<"/aluno/cursos/[slu
               </section>
             )}
           </div>
+        )}
+
+        {phases.length > 0 && phaseIdx >= 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 font-serif text-lg text-navy">Em 3D: a fase desta aula</h2>
+            <PhaseViewer key={lessonId} phases={phases} initial={phaseIdx} autoplay={false} compact />
+          </section>
         )}
 
         {materials.length > 0 && (

@@ -3,7 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/server";
 import { supabaseConfigured } from "@/lib/supabase/env";
 import { CONTENT_TAG } from "@/lib/content";
-import type { Course, Product } from "@/content/site";
+import type { Course, Phase, Product } from "@/content/site";
 
 /** Produtos e cursos publicados (em cache; atualiza quando o painel salva). */
 export async function getStore(): Promise<{ products: Product[]; courses: Course[] }> {
@@ -33,7 +33,7 @@ export async function getStore(): Promise<{ products: Product[]; courses: Course
 
 export type Lesson = { id: string; position: number; title: string; topics: string[]; exercise: string[]; duration_min: number | null; is_preview: boolean };
 export type CourseModule = { id: string; position: number; title: string; level: string; lessons: Lesson[] };
-export type CourseDetail = Course & { modules: CourseModule[] };
+export type CourseDetail = Course & { modules: CourseModule[]; phases: Phase[] };
 
 /** Curso com módulos e aulas (ementa pública), para a página do curso. */
 export async function getCourse(slug: string): Promise<CourseDetail | null> {
@@ -46,7 +46,7 @@ export async function getCourse(slug: string): Promise<CourseDetail | null> {
   const { data, error } = await createPublicClient()
     .from("ita_courses")
     .select(
-      "id,slug,title,subtitle,description,image_url,highlights,price_monthly_cents,price_full_cents,access_days," +
+      "id,slug,title,subtitle,description,image_url,highlights,price_monthly_cents,price_full_cents,access_days,phases," +
         "modules:ita_course_modules(id,position,title,level,lessons:ita_course_lessons(id,position,title,topics,exercise,duration_min,is_preview))",
     )
     .eq("slug", slug)
@@ -60,6 +60,7 @@ export async function getCourse(slug: string): Promise<CourseDetail | null> {
   cacheLife("max");
   if (!data) return null;
   const course = data as unknown as CourseDetail;
+  course.phases = Array.isArray(course.phases) ? course.phases : [];
   course.modules = [...(course.modules ?? [])]
     .sort((a, b) => a.position - b.position)
     .map((m) => ({ ...m, lessons: [...(m.lessons ?? [])].sort((a, b) => a.position - b.position) }));

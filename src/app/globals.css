@@ -34,3 +34,9 @@ body {
 section[id] {
   scroll-margin-top: 80px;
 }
+
+/* barra de progresso das fases do curso (PhaseViewer) */
+@keyframes phase-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
